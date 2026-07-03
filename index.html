@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Learning Intelligence Hub — AI Decision Support for Moodle</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<style>
+  :root{
+    --purple-950:#06304A;
+    --purple-900:#0B5C87;
+    --purple-700:#1483B8;
+    --purple-500:#29ABE2;
+    --purple-100:#E3F4FC;
+    --gold-600:#C9A84C;
+    --gold-400:#DEC280;
+    --gold-100:#F7EFD9;
+    --ink:#1E1B29;
+    --ink-soft:#6B6580;
+    --paper:#FAF8F4;
+    --card:#FFFFFF;
+    --line:#E7E2F0;
+    --good:#3F8F5F;
+    --good-bg:#E7F3EC;
+    --warn:#B8863D;
+    --warn-bg:#FBF1DD;
+    --risk:#B4453B;
+    --risk-bg:#FBEAE8;
+    --radius:14px;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{
+    font-family:'Inter',sans-serif;
+    background:var(--paper);
+    color:var(--ink);
+    -webkit-font-smoothing:antialiased;
+  }
+  ::selection{ background:var(--gold-400); color:var(--purple-950); }
+
+  .app{ display:flex; min-height:100vh; }
+
+  /* ---------- SIDEBAR ---------- */
+  .sidebar{
+    width:248px; flex-shrink:0;
+    background:linear-gradient(180deg,var(--purple-950), var(--purple-900) 60%);
+    color:#EAF6FD;
+    padding:28px 18px;
+    position:sticky; top:0; height:100vh;
+    display:flex; flex-direction:column;
+  }
+  .brand{ display:flex; align-items:center; gap:10px; padding:0 6px 26px; }
+  .brand-mark{
+    width:34px; height:34px; border-radius:9px;
+    background:conic-gradient(from 220deg, var(--gold-600), var(--gold-400), var(--gold-600));
+    display:flex; align-items:center; justify-content:center;
+    font-family:'Fraunces',serif; font-weight:700; color:var(--purple-950); font-size:16px;
+  }
+  .brand-name{ font-family:'Fraunces',serif; font-weight:600; font-size:15px; letter-spacing:.1px; line-height:1.22; }
+  .brand-sub{ font-size:10px; color:var(--purple-500); text-transform:uppercase; letter-spacing:1.4px; margin-top:1px; }
+
+  .nav-label{ font-size:10px; text-transform:uppercase; letter-spacing:1.6px; color:var(--purple-500); margin:18px 8px 8px; }
+  .nav-item{
+    display:flex; align-items:center; gap:11px;
+    padding:10px 12px; border-radius:10px; cursor:pointer;
+    font-size:13.5px; font-weight:500; color:#CFC7EA;
+    transition:background .15s, color .15s;
+    margin-bottom:2px;
+  }
+  .nav-item:hover{ background:rgba(255,255,255,.06); color:#fff; }
+  .nav-item.active{ background:rgba(201,168,76,.16); color:var(--gold-400); }
+  .nav-item .dot{ width:6px; height:6px; border-radius:50%; background:currentColor; opacity:.7; flex-shrink:0; }
+
+  .sidebar-foot{ margin-top:auto; padding:14px 12px; border-top:1px solid rgba(255,255,255,.09); }
+  .sidebar-foot .who{ font-size:12.5px; font-weight:600; color:#EAF6FD; }
+  .sidebar-foot .role{ font-size:11px; color:var(--purple-500); margin-top:1px; }
+
+  /* ---------- MAIN ---------- */
+  .main{ flex:1; min-width:0; padding:30px 38px 60px; }
+  .topbar{ display:flex; align-items:flex-end; justify-content:space-between; margin-bottom:26px; flex-wrap:wrap; gap:14px; }
+  .topbar h1{ font-family:'Fraunces',serif; font-weight:600; font-size:27px; color:var(--purple-950); }
+  .topbar .eyebrow{ font-size:11px; text-transform:uppercase; letter-spacing:1.6px; color:var(--gold-600); font-weight:600; margin-bottom:4px; }
+  .topbar .sub{ color:var(--ink-soft); font-size:13.5px; margin-top:5px; }
+  .as-of{ font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--ink-soft); background:var(--card); border:1px solid var(--line); padding:7px 11px; border-radius:8px; }
+
+  .grid{ display:grid; gap:16px; }
+  .g4{ grid-template-columns:repeat(4,1fr); }
+  .g3{ grid-template-columns:repeat(3,1fr); }
+  .g2{ grid-template-columns:2fr 1fr; }
+  @media (max-width:1100px){ .g4{grid-template-columns:repeat(2,1fr);} .g3{grid-template-columns:1fr 1fr;} .g2{grid-template-columns:1fr;} }
+
+  .card{
+    background:var(--card); border:1px solid var(--line); border-radius:var(--radius);
+    padding:20px;
+  }
+  .card h3{ font-family:'Fraunces',serif; font-size:15.5px; font-weight:600; color:var(--purple-950); margin-bottom:2px; }
+  .card .hint{ font-size:11.5px; color:var(--ink-soft); margin-bottom:14px; }
+
+  .kpi{ background:var(--card); border:1px solid var(--line); border-radius:var(--radius); padding:18px 18px 16px; position:relative; overflow:hidden; }
+  .kpi .label{ font-size:11px; text-transform:uppercase; letter-spacing:1px; color:var(--ink-soft); font-weight:600; }
+  .kpi .value{ font-family:'Fraunces',serif; font-size:30px; font-weight:600; color:var(--purple-950); margin-top:8px; }
+  .kpi .value span{ font-size:15px; color:var(--ink-soft); font-family:'Inter',sans-serif; font-weight:500;}
+  .kpi .delta{ font-size:11.5px; font-weight:600; margin-top:7px; display:inline-flex; align-items:center; gap:4px; padding:3px 8px; border-radius:20px; }
+  .delta.up{ color:var(--good); background:var(--good-bg); }
+  .delta.down{ color:var(--risk); background:var(--risk-bg); }
+  .delta.flat{ color:var(--warn); background:var(--warn-bg); }
+  .kpi::after{ content:""; position:absolute; right:-18px; top:-18px; width:70px; height:70px; border-radius:50%; background:var(--gold-100); opacity:.6; }
+
+  table{ width:100%; border-collapse:collapse; font-size:12.8px; }
+  th{ text-align:left; font-size:10.5px; text-transform:uppercase; letter-spacing:.8px; color:var(--ink-soft); padding:0 10px 9px; font-weight:600; border-bottom:1px solid var(--line); }
+  td{ padding:10px; border-bottom:1px solid var(--line); vertical-align:middle; }
+  tr:last-child td{ border-bottom:none; }
+  .name-cell{ display:flex; align-items:center; gap:9px; }
+  .avatar{ width:26px; height:26px; border-radius:50%; background:var(--purple-100); color:var(--purple-700); display:flex; align-items:center; justify-content:center; font-size:10.5px; font-weight:700; font-family:'Fraunces',serif; flex-shrink:0; }
+  .pill{ display:inline-block; padding:3px 9px; border-radius:20px; font-size:11px; font-weight:600; }
+  .pill.risk{ background:var(--risk-bg); color:var(--risk); }
+  .pill.warn{ background:var(--warn-bg); color:var(--warn); }
+  .pill.good{ background:var(--good-bg); color:var(--good); }
+  .bar-track{ background:var(--purple-100); border-radius:6px; height:6px; width:100%; overflow:hidden; }
+  .bar-fill{ height:100%; border-radius:6px; background:var(--purple-700); }
+
+  .rec-list{ display:flex; flex-direction:column; gap:10px; }
+  .rec{ display:flex; gap:11px; padding:11px 12px; border:1px solid var(--line); border-radius:10px; background:#FEFDFB; }
+  .rec .badge{ width:22px; height:22px; border-radius:6px; background:var(--purple-900); color:var(--gold-400); font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0; font-family:'JetBrains Mono',monospace; }
+  .rec .txt{ font-size:12.8px; line-height:1.45; }
+  .rec .txt b{ color:var(--purple-950); }
+
+  /* AI assistant */
+  .ai-panel{ background:var(--purple-950); border-radius:var(--radius); padding:20px; color:#EAF6FD; }
+  .ai-panel h3{ font-family:'Fraunces',serif; color:#fff; font-size:15.5px; font-weight:600; display:flex; align-items:center; gap:8px;}
+  .ai-panel .spark{ width:8px; height:8px; border-radius:50%; background:var(--gold-400); box-shadow:0 0 0 4px rgba(222,194,128,.18); }
+  .ai-log{ margin-top:14px; display:flex; flex-direction:column; gap:10px; max-height:230px; overflow-y:auto; padding-right:4px; }
+  .ai-q{ align-self:flex-end; background:rgba(255,255,255,.09); padding:8px 12px; border-radius:10px 10px 2px 10px; font-size:12.5px; max-width:88%; }
+  .ai-a{ background:rgba(201,168,76,.13); padding:9px 12px; border-radius:10px 10px 10px 2px; font-size:12.5px; line-height:1.55; max-width:92%; border:1px solid rgba(222,194,128,.2); }
+  .ai-suggest{ display:flex; flex-wrap:wrap; gap:6px; margin-top:12px; }
+  .ai-suggest span{ font-size:11px; padding:5px 10px; border:1px solid rgba(255,255,255,.18); border-radius:20px; color:#CFC7EA; cursor:pointer; transition:.15s; }
+  .ai-suggest span:hover{ background:rgba(255,255,255,.08); color:#fff; }
+  .ai-input{ margin-top:12px; display:flex; gap:8px; }
+  .ai-input input{ flex:1; background:rgba(255,255,255,.07); border:1px solid rgba(255,255,255,.15); border-radius:9px; padding:9px 11px; color:#fff; font-size:12.5px; font-family:'Inter',sans-serif; }
+  .ai-input input::placeholder{ color:#9187B0; }
+  .ai-input button{ background:var(--gold-600); border:none; color:var(--purple-950); font-weight:700; font-size:12px; padding:0 15px; border-radius:9px; cursor:pointer; }
+
+  /* Compass (signature element) */
+  .compass-wrap{ display:flex; align-items:center; gap:20px; }
+  .compass-meta{ flex:1; }
+  .compass-meta .big{ font-family:'Fraunces',serif; font-size:34px; font-weight:600; color:var(--purple-950); }
+  .compass-meta .tag{ font-size:12px; color:var(--ink-soft); margin-top:4px; }
+  .legend{ display:flex; flex-direction:column; gap:6px; margin-top:12px; font-size:11.5px; }
+  .legend div{ display:flex; align-items:center; gap:7px; }
+  .legend i{ width:8px; height:8px; border-radius:2px; display:inline-block; }
+
+  canvas{ max-width:100%; }
+
+  .section-title{ font-family:'Fraunces',serif; font-size:13.5px; font-weight:600; color:var(--purple-950); margin:24px 0 12px; display:flex; align-items:center; gap:8px; }
+  .section-title::after{ content:""; flex:1; height:1px; background:var(--line); }
+
+  .status-dot{ width:8px; height:8px; border-radius:50%; display:inline-block; margin-right:6px; }
+  .status-dot.on{ background:var(--good); }
+  .status-dot.watch{ background:var(--warn); }
+  .status-dot.off{ background:var(--risk); }
+
+  .footer-note{ margin-top:34px; font-size:11px; color:var(--ink-soft); text-align:center; }
+  .proto-tag{ display:inline-block; background:var(--purple-100); color:var(--purple-700); font-size:10.5px; font-weight:700; letter-spacing:.6px; padding:3px 9px; border-radius:6px; margin-left:10px; text-transform:uppercase; vertical-align:middle;}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="brand">
+      <div class="brand-mark">LI</div>
+      <div>
+        <div class="brand-name">Learning<br>Intelligence Hub</div>
+        <div class="brand-sub">by IwazoLab</div>
+      </div>
+    </div>
+
+    <div class="nav-label">Dashboards</div>
+    <div class="nav-item active" data-view="student"><span class="dot"></span> Student</div>
+    <div class="nav-item" data-view="lecturer"><span class="dot"></span> Lecturer</div>
+    <div class="nav-item" data-view="odel"><span class="dot"></span> ODeL</div>
+    <div class="nav-item" data-view="ict"><span class="dot"></span> ICT</div>
+    <div class="nav-item" data-view="registrar"><span class="dot"></span> Registrar</div>
+    <div class="nav-item" data-view="management"><span class="dot"></span> Management</div>
+
+    <div class="nav-label">Platform</div>
+    <div class="nav-item" data-view="architecture"><span class="dot"></span> How it Works</div>
+
+    <div class="sidebar-foot">
+      <div class="who">Daystar University · Pilot</div>
+      <div class="role">Moodle instance · connected</div>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main">
+
+    <div class="topbar">
+      <div>
+        <div class="eyebrow" id="view-eyebrow">Student view</div>
+        <h1 id="view-title">Learning Health Overview <span class="proto-tag">Prototype · mock data</span></h1>
+        <div class="sub" id="view-sub">A single, predictive view of one learner's trajectory — replacing five separate Moodle reports.</div>
+      </div>
+      <div class="as-of">SYNCED &nbsp;2026-07-03 · 06:12 EAT</div>
+    </div>
+
+    <div id="view-root"></div>
+
+    <div class="footer-note">Learning Intelligence Hub transforms Moodle from a records system into an institutional decision-support layer · Data Collection → Learning Intelligence Engine → Decision Dashboards</div>
+  </div>
+</div>
+
+<script>
+/* ---------------------------------------------------------
+   MOCK DATA
+--------------------------------------------------------- */
+const students = [
+  {name:"Brian Otieno", id:"24-1863", course:"Database Management Systems (ACS-261C)", risk:82, trend:"down", engagement:31, cluster:"Silent learner"},
+  {name:"Faith Wanjala", id:"23-0947", course:"Business Database & Mgmt Systems (MIS-224A)", risk:74, trend:"down", engagement:38, cluster:"Last-minute learner"},
+  {name:"Kevin Mwangi", id:"24-2210", course:"Advanced Database Mgmt Systems (ACS-362A)", risk:61, trend:"flat", engagement:47, cluster:"Weekend learner"},
+  {name:"Purity Chebet", id:"24-1502", course:"Database Management Systems (ACS-261C)", risk:19, trend:"up", engagement:88, cluster:"High performer"},
+  {name:"Samuel Kiprono", id:"23-0381", course:"Foundations of AI and Data Analytics", risk:9, trend:"up", engagement:94, cluster:"Collaborative"},
+];
+
+const lecturers = [
+  {name:"Dr. N. Ouko", course:"Database Management Systems (ACS-261C)", te:88, students:142, response:"6h"},
+  {name:"Dr. F. Wambui", course:"Business Database & Mgmt Systems (MIS-224A)", te:71, students:98, response:"29h"},
+  {name:"Mr. P. Simiyu", course:"Advanced Database Mgmt Systems (ACS-362A)", te:93, students:64, response:"3h"},
+  {name:"Ms. L. Achola", course:"Foundations of AI and Data Analytics", te:58, students:210, response:"51h"},
+];
+
+const departments = [
+  {name:"Computer Science", health:81, retention:89, atRisk:14},
+  {name:"Business & Econ", health:66, retention:78, atRisk:29},
+  {name:"Communication", health:72, retention:83, atRisk:21},
+  {name:"Education", health:58, retention:71, atRisk:37},
+];
+
+/* ---------------------------------------------------------
+   AI ASSISTANT — canned Q&A per view
+--------------------------------------------------------- */
+const aiPreset = {
+  student:[
+    ["Why is my risk score high this week?","Your quiz average dropped 22% and you missed 2 of the last 3 forum deadlines. These two factors weigh heaviest in your risk score."],
+  ],
+  lecturer:[
+    ["Which students need attention this week?","5 students in Database Management Systems (ACS-261C) show declining engagement over 14 days. Brian Otieno and Faith Wanjala are highest priority — both missed the last assignment."],
+  ],
+  odel:[
+    ["Which ODeL programmes have the weakest digital engagement?","BSc Education (Online) is 21 points below the ODeL average. Root cause: 62% of sessions are under 4 minutes, suggesting content or connectivity friction, not disinterest."],
+  ],
+  ict:[
+    ["Any system risks this week?","Storage is at 78% capacity, trending to threshold in ~19 days. Peak load remains Sundays 8–10pm — no errors logged."],
+  ],
+  registrar:[
+    ["Which programmes are behind on completion?","BSc Education (Year 3) is 11 points below its completion-rate cohort average. Root cause: elevated missing-CAT rate in two core units."],
+  ],
+  management:[
+    ["Generate a one-line summary for Senate.","Institutional engagement is stable at 74%, retention up 2pts YoY; Education faculty requires targeted intervention before Semester 2 exams."],
+  ],
+};
+
+/* ---------------------------------------------------------
+   VIEW RENDERERS
+--------------------------------------------------------- */
+const root = document.getElementById('view-root');
+const eyebrow = document.getElementById('view-eyebrow');
+const title = document.getElementById('view-title');
+const sub = document.getElementById('view-sub');
+
+function riskPill(v){
+  if(v>=60) return `<span class="pill risk">${v} · high risk</span>`;
+  if(v>=30) return `<span class="pill warn">${v} · watch</span>`;
+  return `<span class="pill good">${v} · low risk</span>`;
+}
+function initials(n){ return n.split(' ').map(w=>w[0]).slice(0,2).join(''); }
+
+function aiPanel(view){
+  const qa = aiPreset[view][0];
+  return `
+  <div class="ai-panel">
+    <h3><span class="spark"></span> Ask the Hub</h3>
+    <div class="ai-log">
+      <div class="ai-q">${qa[0]}</div>
+      <div class="ai-a">${qa[1]}</div>
+    </div>
+    <div class="ai-suggest">
+      <span>Compare with last semester</span>
+      <span>Explain this score</span>
+      <span>Draft an intervention</span>
+    </div>
+    <div class="ai-input">
+      <input type="text" placeholder="Ask about this dashboard…" disabled>
+      <button>Ask</button>
+    </div>
+  </div>`;
+}
+
+function kpi(label, value, unit, delta, dir){
+  return `<div class="kpi">
+    <div class="label">${label}</div>
+    <div class="value">${value}${unit?`<span> ${unit}</span>`:''}</div>
+    <div class="delta ${dir}">${dir==='up'?'▲':dir==='down'?'▼':'●'} ${delta}</div>
+  </div>`;
+}
+
+/* ---------- STUDENT VIEW ---------- */
+function renderStudent(){
+  eyebrow.textContent = "Student view · Brian Otieno (24-1863)";
+  title.innerHTML = 'Learning Health Overview <span class="proto-tag">Prototype · mock data</span>';
+  sub.textContent = "A single, predictive view of one learner's trajectory — replacing five separate Moodle reports.";
+
+  root.innerHTML = `
+    <div class="grid g2">
+      <div class="card">
+        <div class="compass-wrap">
+          <canvas id="compassChart" width="150" height="150"></canvas>
+          <div class="compass-meta">
+            <div class="tag">LEARNING HEALTH COMPASS</div>
+            <div class="big">62<span style="font-size:16px;color:var(--ink-soft)">/100</span></div>
+            <div class="tag">Composite of engagement, submissions, quiz trend & attendance</div>
+            <div class="legend">
+              <div><i style="background:var(--purple-900)"></i> Engagement — 31%</div>
+              <div><i style="background:var(--gold-600)"></i> Submissions — 55%</div>
+              <div><i style="background:var(--purple-500)"></i> Attendance — 74%</div>
+              <div><i style="background:var(--risk)"></i> Quiz trend — declining</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      ${aiPanel('student')}
+    </div>
+
+    <div class="section-title">This week</div>
+    <div class="grid g4">
+      ${kpi("Risk score","82","/100","+9 vs last wk","down")}
+      ${kpi("Course engagement","31","%","-14pts","down")}
+      ${kpi("Assignments due","2","","Quiz 4 · Fri","flat")}
+      ${kpi("Attendance","74","%","-3pts","down")}
+    </div>
+
+    <div class="section-title">Performance trend — Database Management Systems (ACS-261C)</div>
+    <div class="card"><canvas id="trendChart" height="80"></canvas></div>
+
+    <div class="section-title">Your AI coach recommends</div>
+    <div class="rec-list">
+      <div class="rec"><div class="badge">1</div><div class="txt"><b>Complete Quiz 4 before Friday</b> — two missed quizzes already lowered your unit average by 12%.</div></div>
+      <div class="rec"><div class="badge">2</div><div class="txt"><b>Review Week 5 lecture videos</b> — your last two wrong answers map directly to that topic.</div></div>
+      <div class="rec"><div class="badge">3</div><div class="txt"><b>Book 15 minutes with Dr. Ouko</b> — students who met their lecturer at this risk level recovered 2.1x more often.</div></div>
+    </div>
+  `;
+
+  new Chart(document.getElementById('compassChart'), {
+    type:'doughnut',
+    data:{ labels:['Engagement','Submissions','Attendance','Remaining'],
+      datasets:[{ data:[31,24,19,26],
+        backgroundColor:['#0B5C87','#C9A84C','#29ABE2','#EAF6FD'],
+        borderWidth:0 }]},
+    options:{ cutout:'72%', plugins:{legend:{display:false}, tooltip:{enabled:false}} }
+  });
+
+  new Chart(document.getElementById('trendChart'), {
+    type:'line',
+    data:{ labels:['Wk1','Wk2','Wk3','Wk4','Wk5','Wk6','Wk7'],
+      datasets:[
+        {label:'Brian Otieno', data:[71,68,64,60,55,49,44], borderColor:'#B4453B', backgroundColor:'rgba(180,69,59,.08)', fill:true, tension:.35, pointRadius:3},
+        {label:'Course average', data:[70,71,69,72,70,73,71], borderColor:'#29ABE2', borderDash:[4,3], pointRadius:0, tension:.35}
+      ]},
+    options:{ plugins:{legend:{position:'bottom', labels:{boxWidth:8, font:{size:11}}}}, scales:{y:{min:30,max:85,grid:{color:'#F0EDF7'}}, x:{grid:{display:false}}} }
+  });
+}
+
+/* ---------- LECTURER VIEW ---------- */
+function renderLecturer(){
+  eyebrow.textContent = "Lecturer view · Dr. N. Ouko";
+  title.innerHTML = 'Course Health — Database Management Systems (ACS-261C) <span class="proto-tag">Prototype · mock data</span>';
+  sub.textContent = "Engagement, at-risk learners and teaching signals for one course, in one screen.";
+
+  root.innerHTML = `
+    <div class="grid g4">
+      ${kpi("Teaching effectiveness","88","/100","+4pts","up")}
+      ${kpi("Class engagement","67","%","-6pts","down")}
+      ${kpi("At-risk students","5","of 142","+2","down")}
+      ${kpi("Avg. feedback time","6","hrs","-3hrs","up")}
+    </div>
+
+    <div class="grid g2" style="margin-top:16px;">
+      <div class="card">
+        <h3>Students needing attention</h3>
+        <div class="hint">Ranked by AI risk score, updated daily from submissions, quizzes and login activity.</div>
+        <table>
+          <tr><th>Student ID</th><th>Student</th><th>Cluster</th><th>Engagement</th><th>Risk</th></tr>
+          ${students.map(s=>`
+            <tr>
+              <td style="font-family:'JetBrains Mono',monospace; color:var(--ink-soft);">${s.id}</td>
+              <td><div class="name-cell"><div class="avatar">${initials(s.name)}</div>${s.name}</div></td>
+              <td>${s.cluster}</td>
+              <td><div class="bar-track"><div class="bar-fill" style="width:${s.engagement}%; background:${s.engagement<40?'#B4453B':s.engagement<70?'#C9A84C':'#3F8F5F'}"></div></div></td>
+              <td>${riskPill(s.risk)}</td>
+            </tr>`).join('')}
+        </table>
+      </div>
+      ${aiPanel('lecturer')}
+    </div>
+
+    <div class="section-title">Activity completion matrix — sourced from Moodle's Activity completion report</div>
+    <div class="card">
+      <div class="hint">Same checkbox structure as Course administration → Reports → Activity completion — the Hub adds the Flag column so a lecturer doesn't have to read the grid by eye.</div>
+      <div style="overflow-x:auto;">
+      <table>
+        <tr>
+          <th>Student ID</th><th>Student</th>
+          <th>Intro to<br>Databases</th><th>Database<br>Design</th><th>Relational<br>Model</th><th>Intro to<br>SQL</th><th>Normal-<br>ization</th><th>Transaction<br>Mgmt</th><th>Flag</th>
+        </tr>
+        ${(()=>{
+          const matrix = [
+            {s:students[0], done:[1,1,0,0,0,0]},
+            {s:students[1], done:[1,0,0,0,0,0]},
+            {s:students[2], done:[1,1,1,0,0,0]},
+            {s:students[3], done:[1,1,1,1,1,1]},
+            {s:students[4], done:[1,1,1,1,1,0]},
+          ];
+          const box = v => v ? '<span style="color:var(--good); font-size:15px;">&#9745;</span>' : '<span style="color:var(--ink-soft); font-size:15px; opacity:.4;">&#9744;</span>';
+          return matrix.map(row=>{
+            const completed = row.done.reduce((a,b)=>a+b,0);
+            const flag = completed<=1 ? '<span class="pill risk">Behind</span>' : completed<=3 ? '<span class="pill warn">Watch</span>' : '<span class="pill good">On track</span>';
+            return `<tr>
+              <td style="font-family:'JetBrains Mono',monospace; color:var(--ink-soft);">${row.s.id}</td>
+              <td><div class="name-cell"><div class="avatar">${initials(row.s.name)}</div>${row.s.name}</div></td>
+              ${row.done.map(box).join('')}
+              <td>${flag}</td>
+            </tr>`;
+          }).join('');
+        })()}
+      </table>
+      </div>
+    </div>
+
+    <div class="section-title">AI recommendations for this course</div>
+    <div class="rec-list">
+      <div class="rec"><div class="badge">1</div><div class="txt"><b>Release revision material for Week 5</b> — 61% of quiz errors this week trace to that unit.</div></div>
+      <div class="rec"><div class="badge">2</div><div class="txt"><b>Reduce Quiz 4 difficulty by one band</b> — completion time is 2.3x the historical average.</div></div>
+      <div class="rec"><div class="badge">3</div><div class="txt"><b>Message 5 inactive students today</b> — early contact at this risk band improves recovery odds by 40%.</div></div>
+    </div>
+  `;
+}
+
+/* ---------- ODeL VIEW ---------- */
+const odelProgrammes = [
+  {name:"BSc Education (Online)", learners:412, digital:47, completion:63, dropoff:"High"},
+  {name:"BA Communication (Blended)", learners:268, digital:71, completion:79, dropoff:"Low"},
+  {name:"MSc Data Science (Online)", learners:96, digital:88, completion:91, dropoff:"Low"},
+  {name:"Diploma Business (Online)", learners:301, digital:54, completion:68, dropoff:"Moderate"},
+];
+
+function renderODeL(){
+  eyebrow.textContent = "ODeL view · Open, Distance & eLearning";
+  title.innerHTML = 'Distance & Online Learning Performance <span class="proto-tag">Prototype · mock data</span>';
+  sub.textContent = "Digital engagement, session quality and completion for fully-online and blended programmes.";
+
+  root.innerHTML = `
+    <div class="grid g4">
+      ${kpi("Digital engagement","65","/100","+4pts","up")}
+      ${kpi("Avg. session length","6.4","min","-1.1min","down")}
+      ${kpi("Online completion","75","%","+2pts","up")}
+      ${kpi("Connectivity drop-offs","18","%","+3pts","down")}
+    </div>
+
+    <div class="grid g2" style="margin-top:16px;">
+      <div class="card">
+        <h3>ODeL programme comparison</h3>
+        <div class="hint">Digital Learning Index and completion, by programme delivery mode.</div>
+        <table>
+          <tr><th>Programme</th><th>Learners</th><th>Digital Index</th><th>Completion</th><th>Drop-off risk</th></tr>
+          ${odelProgrammes.map(p=>`
+            <tr>
+              <td>${p.name}</td>
+              <td>${p.learners}</td>
+              <td><div class="bar-track"><div class="bar-fill" style="width:${p.digital}%; background:${p.digital<55?'#B4453B':p.digital<75?'#C9A84C':'#3F8F5F'}"></div></div></td>
+              <td>${p.completion}%</td>
+              <td>${p.dropoff==="High"?`<span class="pill risk">${p.dropoff}</span>`:p.dropoff==="Moderate"?`<span class="pill warn">${p.dropoff}</span>`:`<span class="pill good">${p.dropoff}</span>`}</td>
+            </tr>`).join('')}
+        </table>
+      </div>
+      ${aiPanel('odel')}
+    </div>
+
+    <div class="section-title">Session length distribution — Online cohorts</div>
+    <div class="card"><canvas id="odelChart" height="75"></canvas></div>
+
+    <div class="section-title">AI recommendations for ODeL</div>
+    <div class="rec-list">
+      <div class="rec"><div class="badge">1</div><div class="txt"><b>Investigate BSc Education (Online) sessions</b> — 62% run under 4 minutes, pointing to content load or connectivity friction rather than disengagement.</div></div>
+      <div class="rec"><div class="badge">2</div><div class="txt"><b>Push low-bandwidth content packages</b> to programmes with drop-offs concentrated in evening hours.</div></div>
+      <div class="rec"><div class="badge">3</div><div class="txt"><b>Replicate MSc Data Science's cohort design</b> — smaller synchronous groups correlate with its 91% completion rate.</div></div>
+    </div>
+  `;
+
+  new Chart(document.getElementById('odelChart'), {
+    type:'bar',
+    data:{ labels:['<2 min','2–5 min','5–10 min','10–20 min','20+ min'],
+      datasets:[{ label:'Share of sessions', data:[22,31,26,15,6],
+        backgroundColor:'#1483B8', borderRadius:6, maxBarThickness:46 }]},
+    options:{ plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true,grid:{color:'#F0EDF7'}},x:{grid:{display:false}}} }
+  });
+}
+
+/* ---------- ICT VIEW ---------- */
+function renderICT(){
+  eyebrow.textContent = "ICT view · Platform operations";
+  title.innerHTML = 'System Health & Usage <span class="proto-tag">Prototype · mock data</span>';
+  sub.textContent = "Infrastructure signals for the Learning Intelligence Hub plugin and its Moodle connection.";
+
+  root.innerHTML = `
+    <div class="grid g4">
+      ${kpi("Server uptime","99.8","%","30-day","up")}
+      ${kpi("Storage used","78","%","+6pts","down")}
+      ${kpi("Peak concurrent users","1,240","","Sun 8–10pm","flat")}
+      ${kpi("Sync errors (7d)","0","","clean","up")}
+    </div>
+
+    <div class="grid g2" style="margin-top:16px;">
+      <div class="card">
+        <h3>Plugin & integration status</h3>
+        <div class="hint">Data Collection Engine — component health.</div>
+        <table>
+          <tr><th>Component</th><th>Status</th><th>Last sync</th></tr>
+          <tr><td>Moodle log stream</td><td><span class="status-dot on"></span>Healthy</td><td>2 min ago</td></tr>
+          <tr><td>Gradebook connector</td><td><span class="status-dot on"></span>Healthy</td><td>2 min ago</td></tr>
+          <tr><td>Forum & messaging feed</td><td><span class="status-dot watch"></span>Delayed</td><td>34 min ago</td></tr>
+          <tr><td>SCORM / competency feed</td><td><span class="status-dot on"></span>Healthy</td><td>5 min ago</td></tr>
+          <tr><td>ML risk-scoring job</td><td><span class="status-dot on"></span>Healthy</td><td>Ran 05:55 EAT</td></tr>
+        </table>
+      </div>
+      ${aiPanel('ict')}
+    </div>
+  `;
+}
+
+/* ---------- REGISTRAR VIEW ---------- */
+function renderRegistrar(){
+  eyebrow.textContent = "Registrar view · Academic progression";
+  title.innerHTML = 'Completion & Graduation Readiness <span class="proto-tag">Prototype · mock data</span>';
+  sub.textContent = "Programme-level completion, retention and readiness signals across the institution.";
+
+  root.innerHTML = `
+    <div class="grid g4">
+      ${kpi("Overall completion","83","%","+2pts","up")}
+      ${kpi("Retention index","80","/100","+1pt","up")}
+      ${kpi("Graduation-ready","74","%","flat","flat")}
+      ${kpi("Programmes flagged","3","of 22","-1","up")}
+    </div>
+
+    <div class="grid g2" style="margin-top:16px;">
+      <div class="card">
+        <h3>Department comparison</h3>
+        <div class="hint">Course Health Score, retention and share of at-risk students, by department.</div>
+        <table>
+          <tr><th>Department</th><th>Health</th><th>Retention</th><th>At-risk %</th></tr>
+          ${departments.map(d=>`
+            <tr>
+              <td>${d.name}</td>
+              <td><div class="bar-track"><div class="bar-fill" style="width:${d.health}%; background:${d.health<65?'#B4453B':d.health<78?'#C9A84C':'#3F8F5F'}"></div></div></td>
+              <td>${d.retention}%</td>
+              <td>${d.atRisk>=30?`<span class="pill risk">${d.atRisk}%</span>`:d.atRisk>=18?`<span class="pill warn">${d.atRisk}%</span>`:`<span class="pill good">${d.atRisk}%</span>`}</td>
+            </tr>`).join('')}
+        </table>
+      </div>
+      ${aiPanel('registrar')}
+    </div>
+  `;
+}
+
+/* ---------- MANAGEMENT VIEW ---------- */
+function renderManagement(){
+  eyebrow.textContent = "Management view · Institutional performance";
+  title.innerHTML = 'Executive Intelligence Summary <span class="proto-tag">Prototype · mock data</span>';
+  sub.textContent = "Strategic KPIs and AI-generated narrative, ready to brief Senate.";
+
+  root.innerHTML = `
+    <div class="grid g4">
+      ${kpi("Institutional engagement","74","%","+2pts YoY","up")}
+      ${kpi("Retention","80","%","+2pts YoY","up")}
+      ${kpi("Digital maturity index","68","/100","+7pts","up")}
+      ${kpi("Faculties needing support","1","of 4","Education","down")}
+    </div>
+
+    <div class="grid g2" style="margin-top:16px;">
+      <div class="card">
+        <h3>Faculty comparison — Course Health Score</h3>
+        <canvas id="mgmtChart" height="90"></canvas>
+      </div>
+      ${aiPanel('management')}
+    </div>
+
+    <div class="section-title">AI-generated executive summary</div>
+    <div class="card">
+      <p style="font-size:13px; line-height:1.7; color:var(--ink);">
+        Engagement and retention are trending positively institution-wide, driven largely by Computer Science and Communication.
+        The Faculty of Education is the one area requiring near-term attention: course health sits 15–20 points below the
+        institutional average, concentrated in two programmes with elevated missing-assessment rates. The Hub recommends
+        a targeted digital-pedagogy intervention before Semester 2 examinations, alongside continued investment in the
+        lecturer feedback-time initiative that has already cut average response time from 29 to 6 hours in top-performing courses.
+      </p>
+    </div>
+  `;
+
+  new Chart(document.getElementById('mgmtChart'), {
+    type:'radar',
+    data:{ labels:['Comp. Science','Business & Econ','Communication','Education'],
+      datasets:[{ label:'Course Health', data:[81,66,72,58],
+        backgroundColor:'rgba(11,92,135,.14)', borderColor:'#0B5C87', pointBackgroundColor:'#C9A84C' }]},
+    options:{ plugins:{legend:{display:false}}, scales:{ r:{ min:0, max:100, grid:{color:'#EAF6FD'}, angleLines:{color:'#EAF6FD'} } } }
+  });
+}
+
+/* ---------- ARCHITECTURE VIEW ---------- */
+function renderArchitecture(){
+  eyebrow.textContent = "Platform overview";
+  title.innerHTML = 'How the Learning Intelligence Hub Works <span class="proto-tag">Prototype · mock data</span>';
+  sub.textContent = "Four layers, one continuous loop: collect, analyse, decide, act.";
+
+  const steps = [
+    ["Moodle LMS","The 5 core course reports every Daystar course exposes under Reports — Logs, Live logs, Activity report, Course participation, Activity completion.", "#EAF6FD", "#0B5C87"],
+    ["Data Collection Layer","Continuous extraction into a unified data warehouse — no manual exports.", "#F7EFD9", "#B8863D"],
+    ["Learning Intelligence Engine","ML models score risk, cluster learners, forecast outcomes, generate explanations.", "#E7F3EC", "#3F8F5F"],
+    ["Decision Support Dashboards","Role-based views — student, lecturer, ODeL, ICT, registrar, management — each with an AI assistant.", "#FBEAE8", "#B4453B"],
+  ];
+
+  const moodleReports = [
+    ["Logs","Full audit trail of every action by every user — page accessed, timestamp, IP address, and action type (view / add / update / delete). Filterable by student, date, activity and level; exportable.","Risk scoring, anomaly detection, session/behaviour clustering"],
+    ["Live logs","Same data as Logs, but only the last 60 minutes, with no filtering or export — a real-time \"who's active now\" feed.","Live engagement widgets, ICT peak-load monitoring"],
+    ["Activity report","Aggregate view counts per activity/resource, with last-access date. No per-student names — course-level, not learner-level.","Course Quality Index, content engagement scoring"],
+    ["Course participation","Who viewed or posted to a specific activity over the past week; filterable by role, group or action (View/Post). Built to message non-participants directly.","Disengagement alerts, at-risk clustering, nudges"],
+    ["Activity completion","Per-student checkbox table against configured completion criteria — only appears if completion tracking is enabled on the course.","Dropout/completion prediction, programme-level readiness"],
+  ];
+
+  root.innerHTML = `
+    <div class="grid g4">
+      ${steps.map((s,i)=>`
+        <div class="card" style="border-top:3px solid ${s[3]}">
+          <div style="font-family:'JetBrains Mono',monospace; font-size:11px; color:${s[3]}; font-weight:600;">STEP ${i+1}</div>
+          <h3 style="margin-top:8px;">${s[0]}</h3>
+          <div class="hint" style="margin-top:6px;">${s[1]}</div>
+        </div>`).join('')}
+    </div>
+
+    <div class="section-title">Data sources — Moodle course reports</div>
+    <div class="card">
+      <div class="hint">Confirmed against Daystar's live instance (elearning.daystar.ac.ke) — Course administration → Reports. These 5 are standard on every course; Activity completion only populates once completion tracking is switched on for that course.</div>
+      <table>
+        <tr><th>Moodle report</th><th>What it actually contains</th><th>Feeds into</th></tr>
+        ${moodleReports.map(r=>`
+          <tr>
+            <td style="font-weight:600; color:var(--purple-950);">${r[0]}</td>
+            <td>${r[1]}</td>
+            <td style="color:var(--ink-soft);">${r[2]}</td>
+          </tr>`).join('')}
+      </table>
+    </div>
+
+    <div class="section-title">What this replaces</div>
+    <div class="card">
+      <table>
+        <tr><th>Instead of…</th><th>Learning Intelligence Hub answers…</th></tr>
+        <tr><td>How many students logged in?</td><td>Which students are likely to fail, why, and what to do today.</td></tr>
+        <tr><td>Opening Logs, Activity report and Course participation separately, per course</td><td>One dashboard per role, refreshed automatically across all courses.</td></tr>
+        <tr><td>Manually reading Activity completion checkboxes</td><td>Daily AI risk scores with explainable drivers.</td></tr>
+        <tr><td>Guessing which courses need redesign</td><td>Course Quality Index ranked across the department.</td></tr>
+      </table>
+    </div>
+
+    <div class="section-title">Prototype scope note</div>
+    <div class="card">
+      <p style="font-size:12.8px; line-height:1.6; color:var(--ink-soft);">
+        This build demonstrates the six role-based dashboards, the AI assistant pattern, and the core visual language on
+        illustrative mock data, now aligned to the actual report structure confirmed on Daystar's Moodle instance. It is a
+        front-end intelligence-layer prototype for stakeholder review — not yet wired to a live Moodle instance. Next build
+        steps: Moodle plugin (PHP, event observers reading the Logs/mdl_logstore_standard_log table plus the Activity
+        completion and Course participation report APIs), a data warehouse schema, and the risk-scoring ML pipeline behind
+        the dashboards shown here.
+      </p>
+    </div>
+  `;
+}
+
+/* ---------------------------------------------------------
+   ROUTER
+--------------------------------------------------------- */
+const renderers = {
+  student:renderStudent, lecturer:renderLecturer, odel:renderODeL,
+  ict:renderICT, registrar:renderRegistrar, management:renderManagement,
+  architecture:renderArchitecture,
+};
+
+document.querySelectorAll('.nav-item').forEach(item=>{
+  item.addEventListener('click', ()=>{
+    document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+    item.classList.add('active');
+    renderers[item.dataset.view]();
+  });
+});
+
+renderStudent();
+</script>
+</body>
+</html>
